@@ -264,6 +264,7 @@ label.cb{display:inline-flex;align-items:center;cursor:pointer;line-height:1.2;u
 .cc .stp{margin-top:5px}
 #tlist.multi tr.d1>td{border-bottom:0}#tlist.multi tr.dr>td{padding-top:0;white-space:normal}#tlist.multi tr.dr .det{margin:0}
 .php-up{display:none}body.phone-mode .php-up{display:flex;align-items:center;gap:10px;margin:0 0 8px;flex-wrap:wrap}.php-b{background:#2563eb;border-color:#2563eb;color:#fff;padding:8px 14px;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center}.php-i{font-size:12px;color:#64748b;flex:1;min-width:0}.php-i.err{color:#b91c1c;font-weight:700}.php-i.ok{color:#047857}.php-i.busy{color:#b45309}
+.php-od{background:#0f6cbd!important;border-color:#0f6cbd!important}.php-b:disabled{opacity:.6;cursor:wait}
 .hide{display:none!important}
 @media (max-width:760px){
 .app{margin:0;border-radius:0}header{padding:16px}.body{padding:14px 12px 20px}h1{font-size:19px}
@@ -311,7 +312,7 @@ label.cb{display:inline-flex;align-items:center;cursor:pointer;line-height:1.2;u
 
 <div class="phd-cap">Galaxy S21 Ultra 5G · SM-G998N · 384 × 854</div>
 <section id="p-stk" class="hide">
-<div class="php-up"><label for="file" class="cb php-b" role="button" tabindex="0">엑셀 불러오기</label><span id="php-info" class="php-i"></span></div>
+<div class="php-up"><button type="button" class="cb php-b php-od" id="od-btn">원드라이브 로그인</button><label for="file" class="cb php-b" role="button" tabindex="0">엑셀 불러오기</label><span id="php-info" class="php-i"></span></div>
 <div class="panel"><h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">재고 목록 현황 <span style="font-weight:400;font-size:12px;color:var(--mute)">항목을 누르면 아래에 상세 목록이 나와요. 여러 개를 누르면 종류가 다른 항목은 모두 해당하는 품목만 나와요</span><button class="rstb" id="srst" type="button" disabled>↺ 초기화</button></h3>
 <div class="lgs" id="sleg"></div></div>
 <div class="panel"><div class="row"><h3 id="sttl" style="margin:0">상세 목록</h3><span class="cnt amtp" id="samt"></span><span class="cnt" id="scnt" style="margin-left:0"></span></div>
@@ -1139,6 +1140,49 @@ function fillTown(){const el=$('town');if(!el)return;const key=TASK.length+':'+S
 const names=Object.keys(cnt).filter(x=>x!=='__none').sort((a,b)=>a.localeCompare(b,'ko'));
 el.innerHTML='<option value="">전체 담당자</option>'+names.map(x=>`<option value="${esc(x)}"${TS.owner===x?' selected':''}>${esc(x)}</option>`).join('')+(cnt['__none']?`<option value="__none"${TS.owner==='__none'?' selected':''}>담당자 없음</option>`:'');el.value=TS.owner||''}
 
+/* ===== 원드라이브 연동 (Microsoft 로그인, 읽기 전용) ===== */
+const OD={cid:'d21749d7-7853-4681-b001-ec3c66f136b7',tenant:'moongil77.onmicrosoft.com',path:'평우서비스/재고관리.26.0628.xlsx',scope:'https://graph.microsoft.com/Files.Read offline_access',busy:false,last:0};
+const odRedirect=()=>location.origin+location.pathname;
+const odAuth=()=>'https://login.microsoftonline.com/'+OD.tenant+'/oauth2/v2.0';
+const odB64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const odKd=s=>{try{return new Date(s).toLocaleString('ko-KR')}catch(e){return ''}};
+const odTok=()=>{try{return JSON.parse(localStorage.getItem('od-tok')||'null')}catch(e){return null}};
+const odMeta=()=>{try{return JSON.parse(localStorage.getItem('od-meta')||'null')}catch(e){return null}};
+async function odLogin(){const ver=odB64(crypto.getRandomValues(new Uint8Array(32))),ch=odB64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ver))),st=odB64(crypto.getRandomValues(new Uint8Array(16)));
+sessionStorage.setItem('od-pkce',JSON.stringify({ver,st}));
+location.href=odAuth()+'/authorize?'+new URLSearchParams({client_id:OD.cid,response_type:'code',redirect_uri:odRedirect(),response_mode:'query',scope:OD.scope,code_challenge:ch,code_challenge_method:'S256',state:st}).toString()}
+async function odTokenReq(body){const r=await fetch(odAuth()+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j.error_description||j.error||('로그인 오류('+r.status+')')),{code:j.error});return j}
+function odStore(j){const old=odTok(),t={at:j.access_token,rt:j.refresh_token||(old&&old.rt)||'',exp:Date.now()+(j.expires_in||3600)*1000};localStorage.setItem('od-tok',JSON.stringify(t));return t}
+async function odHandleRedirect(){const q=new URLSearchParams(location.search);if(!q.get('code')&&!q.get('error'))return false;history.replaceState(null,'',location.origin+location.pathname+location.hash);
+if(q.get('error')){note('err','Microsoft 로그인에 실패했어요: '+String(q.get('error_description')||q.get('error')).slice(0,220));return true}
+let p=null;try{p=JSON.parse(sessionStorage.getItem('od-pkce')||'null')}catch(e){}
+if(!p||p.st!==q.get('state')){note('err','로그인 확인 값이 맞지 않아요. [원드라이브 로그인]을 다시 눌러 주세요.');return true}
+sessionStorage.removeItem('od-pkce');
+try{odStore(await odTokenReq({client_id:OD.cid,grant_type:'authorization_code',code:q.get('code'),redirect_uri:odRedirect(),code_verifier:p.ver,scope:OD.scope}));return 'ok'}catch(e){note('err','로그인 정보를 받지 못했어요: '+String(e.message).slice(0,220));return true}}
+async function odToken(){const t=odTok();if(!t)return null;if(t.exp-60000>Date.now())return t.at;if(!t.rt)return null;try{return odStore(await odTokenReq({client_id:OD.cid,grant_type:'refresh_token',refresh_token:t.rt,scope:OD.scope})).at}catch(e){localStorage.removeItem('od-tok');return null}}
+function odUi(){const b=$('od-btn');if(!b)return;b.disabled=!!OD.busy;b.textContent=OD.busy?'가져오는 중…':(odTok()?'원드라이브 동기화':'원드라이브 로그인')}
+async function odSync(manual){if(OD.busy)return;OD.busy=true;odUi();OD.last=Date.now();
+try{const tok=await odToken();if(!tok){if(manual){OD.busy=false;odUi();return odLogin()}note('','원드라이브에 연결하려면 [원드라이브 로그인]을 눌러 주세요.');return}
+const gp='https://graph.microsoft.com/v1.0/me/drive/root:/'+OD.path.split('/').map(encodeURIComponent).join('/'),H={Authorization:'Bearer '+tok};
+const r=await fetch(gp,{headers:H});
+if(r.status===404){note('err','원드라이브에서 파일을 찾지 못했어요: '+OD.path);return}
+if(r.status===401||r.status===403){localStorage.removeItem('od-tok');note('err','원드라이브 접근 권한이 없어요. [원드라이브 로그인]을 다시 눌러 주세요.');return}
+if(!r.ok)throw new Error('원드라이브 응답 오류('+r.status+')');
+const m=await r.json(),sig=(m.eTag||'')+'|'+(m.lastModifiedDateTime||''),had=odMeta();
+if(!manual&&had&&had.sig===sig&&STK.r.length){note('ok','원드라이브 파일이 이전과 같아요('+odKd(m.lastModifiedDateTime)+' 수정). 불러온 데이터를 그대로 써요.');return}
+note('busy','원드라이브에서 '+(m.name||'엑셀')+' 파일을 내려받는 중이에요…');
+let c=await fetch('https://graph.microsoft.com/v1.0/me/drive/items/'+encodeURIComponent(m.id)+'/content',{headers:H});
+if(!c.ok&&m['@microsoft.graph.downloadUrl'])c=await fetch(m['@microsoft.graph.downloadUrl']);
+if(!c.ok)throw new Error('파일을 내려받지 못했어요('+c.status+')');
+const buf=await c.arrayBuffer();
+await readXlsx(new File([buf],m.name||'재고관리.xlsx'));
+if(/\bok\b/.test($('note').className))localStorage.setItem('od-meta',JSON.stringify({sig,name:m.name,at:Date.now()}))
+}catch(e){const s=String((e&&e.message)||e);note('err','원드라이브에서 가져오지 못했어요: '+s+(/failed to fetch|network|load failed/i.test(s)?' (인터넷 연결이나 Microsoft 접근 설정을 확인해 주세요)':''))}
+finally{OD.busy=false;odUi()}}
+function odInit(){const b=$('od-btn');if(!b)return;b.onclick=()=>odSync(true);odUi();
+setTimeout(async()=>{const r=await odHandleRedirect();odUi();if(r===true)return;if(r==='ok')odSync(true);else if(odTok())odSync(false)},0);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&odTok()&&Date.now()-OD.last>60000)odSync(false)})}
+
 /* ===== 품번 팝업 ===== */
 const ncode=s=>String(s==null?'':s).replace(/\s+/g,'');
 function taskTable(items,sp){
@@ -1272,7 +1316,7 @@ note('ok',`${file.name}에서 재고 ${fmt(stkF.r.length)}개(${stkF.h.length}�
 function seg(id,fn){$(id).onclick=e=>{const b=e.target.closest('button');if(!b)return;$(id).querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));fn(b)}}
 function init(){
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
-schInit();dwInit();bcInit();supInit();
+schInit();dwInit();bcInit();supInit();odInit();
 $('note').addEventListener('click',e=>e.stopPropagation());$('note').addEventListener('keydown',e=>e.stopPropagation());
 document.addEventListener('click',e=>{const px=e.target.closest&&e.target.closest('[data-psk-x]');if(px){pskClose(px.dataset.pskX);return}const x=e.target.closest&&e.target.closest('[data-phk-x]');if(x){phkClose(x.dataset.phkX);return}const t=e.target.closest&&e.target.closest('[data-pn]');if(!t){bcvToggleFromClick(e);return}if(phm()&&t.closest('#slist')){phkToggle(t);return}openPn(t.dataset.pn)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePn();else if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-pn]')){e.preventDefault();if(phm()&&e.target.closest&&e.target.closest('#slist'))phkToggle(e.target);else openPn(e.target.dataset.pn)}});

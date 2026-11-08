@@ -263,7 +263,7 @@ label.cb{display:inline-flex;align-items:center;cursor:pointer;line-height:1.2;u
 .stg{margin-top:12px}.stg:first-of-type{margin-top:6px}.stgh{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding-left:2px}.stgh .pill{font-size:13px;padding:2px 12px}
 .cc .stp{margin-top:5px}
 #tlist.multi tr.d1>td{border-bottom:0}#tlist.multi tr.dr>td{padding-top:0;white-space:normal}#tlist.multi tr.dr .det{margin:0}
-.php-up{display:none}body.phone-mode .php-up{display:flex;align-items:center;gap:10px;margin:0 0 8px;flex-wrap:wrap}.php-b{background:#2563eb;border-color:#2563eb;color:#fff;padding:8px 14px;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center}.php-i{font-size:12px;color:#64748b;flex:1;min-width:0}.php-i.err{color:#b91c1c;font-weight:700}.php-i.ok{color:#047857}.php-i.busy{color:#b45309}
+.php-up{display:none}body.phone-mode .php-up{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 8px;flex-wrap:wrap}.php-b{background:#2563eb;border-color:#2563eb;color:#fff;padding:8px 14px;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center}.php-i{font-size:12px;color:#64748b;flex:1 1 100%;min-width:0;line-height:1.5;text-align:center}.php-i:empty{display:none}.php-i.err{color:#b91c1c;font-weight:700}.php-i.ok{color:#047857}.php-i.busy{color:#b45309}
 .php-od{background:#0f6cbd!important;border-color:#0f6cbd!important}.php-b:disabled{opacity:.6;cursor:wait}
 .hide{display:none!important}
 @media (max-width:760px){
@@ -312,7 +312,7 @@ label.cb{display:inline-flex;align-items:center;cursor:pointer;line-height:1.2;u
 
 <div class="phd-cap">Galaxy S21 Ultra 5G · SM-G998N · 384 × 854</div>
 <section id="p-stk" class="hide">
-<div class="php-up"><button type="button" class="cb php-b php-od" id="od-btn">원드라이브 로그인</button><label for="file" class="cb php-b" role="button" tabindex="0">엑셀 불러오기</label><span id="php-info" class="php-i"></span></div>
+<div class="php-up"><button type="button" class="cb php-b php-od" id="od-btn">원드라이브 로그인</button><span id="php-info" class="php-i"></span></div>
 <div class="panel"><h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">재고 목록 현황 <span style="font-weight:400;font-size:12px;color:var(--mute)">항목을 누르면 아래에 상세 목록이 나와요. 여러 개를 누르면 종류가 다른 항목은 모두 해당하는 품목만 나와요</span><button class="rstb" id="srst" type="button" disabled>↺ 초기화</button></h3>
 <div class="lgs" id="sleg"></div></div>
 <div class="panel"><div class="row"><h3 id="sttl" style="margin:0">상세 목록</h3><span class="cnt amtp" id="samt"></span><span class="cnt" id="scnt" style="margin-left:0"></span></div>
@@ -551,7 +551,7 @@ const pi=si('엑셀'),qi=si('전산'),amt=a=>pi<0||qi<0?0:a.reduce((s,o)=>s+(Num
 let left=LIM||Infinity;const cs=[];for(const k of ks){if(left<=0)break;const all=gs[k].slice().sort(srt),it=all.slice(0,left);left-=it.length;cs.push([k,it,all.length,amt(all)])}
 $('slist').innerHTML=cs.length?(phm()&&!PSK.size?phHead():'')+cs.map(([k,it,tot,am])=>{if(phm()&&PSK.size&&!it.some(o=>PSK.has(ncode(o.r[SK.I['품번']]))))return'';const lab=SK.group==='date'&&/^\d{4}-\d{2}-\d{2}$/.test(k)?`${k} (${wd[new Date(k).getDay()]})`:k;
 const tr=it.map(o=>`<tr><td class="cc">${fcode(o.r[ci])}${spk&&o.r[vi]?`<span class="sm spb">${esc(o.r[vi])}</span>`:''}</td><td><span class="pill" style="background:${SMS[o.st]}">${PL[o.st]||o.st}</span></td>${cols.map(([n,i])=>cell(o,n,i)).join('')}</tr>`).join('');
-return `<div class="gc"><h4>${esc(lab)}<div class="h4r">${am?`<span class="amt" title="단가 × 전산 재고">${fmt(am)}원</span>`:''}<span>${it.length===tot?tot+'건':it.length+'/'+tot+'건'}</span></div></h4>${phm()?`<div class="phl">${(PSK.size?it.filter(o=>PSK.has(ncode(o.r[SK.I['품번']]))):it).map(o=>stkMiniHtml(o,1,1)+phkOpen(o)).join('')}</div>`:`<div class="wrap"><table style="table-layout:fixed;min-width:${minW}px">${head}<tbody>${tr}</tbody></table></div>`}</div>`}).join(''):(STK.r.length?'<div class="empty panel">조건에 맞는 재고가 없어요.</div>':'<div class="empty panel">아직 불러온 재고 데이터가 없어요. 위의 [엑셀 불러오기]로 재고관리 엑셀 파일을 선택해 주세요.</div>')}
+return `<div class="gc"><h4>${esc(lab)}<div class="h4r">${am?`<span class="amt" title="단가 × 전산 재고">${fmt(am)}원</span>`:''}<span>${it.length===tot?tot+'건':it.length+'/'+tot+'건'}</span></div></h4>${phm()?`<div class="phl">${(PSK.size?it.filter(o=>PSK.has(ncode(o.r[SK.I['품번']]))):it).map(o=>stkMiniHtml(o,1,1)+phkOpen(o)).join('')}</div>`:`<div class="wrap"><table style="table-layout:fixed;min-width:${minW}px">${head}<tbody>${tr}</tbody></table></div>`}</div>`}).join(''):(STK.r.length?'<div class="empty panel">조건에 맞는 재고가 없어요.</div>':'<div class="empty panel">아직 불러온 재고 데이터가 없어요. 위의 [원드라이브 로그인]을 눌러 재고관리 엑셀을 불러와 주세요.</div>')}
 /* ===== 미출 현황 ===== */
 const MK=['date','code','name','loc','sys','real','diff','insp','ret','inc','short','qty','branch','dow','client','buy','vendor','owner','vname','cls'];
 const MSM={충족:'#059669',부족:'#f59e0b',없음:'#ef4444'},MSL={충족:'#d1fae5',부족:'#fef3c7',없음:'#fee2e2'},MSC={일반:'#64748b',빵빵:'#ef4444',EV:'#0ea5e9'},MSCL={일반:'#f1f5f9',빵빵:'#fee2e2',EV:'#e0f2fe'};

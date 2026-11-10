@@ -414,7 +414,7 @@ function cat(o){const e=String(o.ev||'').toUpperCase();return e.includes('EV')?'
 const badge=o=>{const c=cat(o);return c==='bbang'?'<span class="tg bb">빵빵</span>':c==='ev'?'<span class="tg ev">EV</span>':''};
 const hlD=t=>esc(t).replace(/(\[[^\]]+\])|([+-]\s?\d+(?:\.\d+)?)|(\d+(?:\.\d+)?\s?개)/g,(m,a,b,c)=>a?'<span class="hb1">'+a+'</span>':'<span class="hb2">'+m+'</span>');
 const dif=n=>n===0?'':'<span class="d '+(n>0?'p':'m')+'">'+(n>0?'+':'−')+fmt(Math.abs(n))+'</span>';
-function mkT(a){return a.map(r=>{const o={};TK.forEach((k,j)=>o[k]=r[j]);o.st=stOf(o);o.sub=o.st==='반품'?((Number(o.inc)||0)>0?'포함':'미포함'):'';o.hay=[o.code,o.name,o.detail,o.supplier,o.status,o.sp2,o.loc].join(' ').toLowerCase();return o})}
+function mkT(a){let nm=null;const gn=c=>{if(!nm){nm=new Map();const ci=STK.h.indexOf('품번'),ni=STK.h.indexOf('품명');if(ci>=0&&ni>=0)STK.r.forEach(r=>nm.set(String(r[ci]).replace(/\s+/g,''),r[ni]))}return nm.get(String(c).replace(/\s+/g,''))};return a.map(r=>{const o={};TK.forEach((k,j)=>o[k]=r[j]);if(!o.name||String(o.name).replace(/\s+/g,'')===String(o.code).replace(/\s+/g,'')){const f=gn(o.code);if(f)o.name=String(f).split(' / ')[0].trim()}o.st=stOf(o);o.sub=o.st==='반품'?((Number(o.inc)||0)>0?'포함':'미포함'):'';o.hay=[o.code,o.name,o.detail,o.supplier,o.status,o.sp2,o.loc].join(' ').toLowerCase();return o})}
 function note(kind,msg,rs){const n=$('note');n.className='note '+kind;n.innerHTML='<span>'+esc(msg)+'</span>';const pi=$('php-info');if(pi){pi.textContent=msg;pi.className='php-i '+(kind||'')}}
 const segSet=(id,v)=>{const el=$(id);if(el&&el.querySelectorAll)el.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.g===v)))};
 const syncLim=(id,v)=>{const el=$(id);if(el&&el.querySelectorAll)el.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===v)))};
@@ -435,7 +435,7 @@ const VCOLS=[
 {k:'inc',th:'<th>포함</th>',cell:o=>`<td>${o.inc?fmt(o.inc):''}</td>`}];
 function fcode(c,plain){const x=fcode0(c);if(plain)return x;const b=String(c).replace(/\s+/g,'');return `<span class="pnl" data-pn="${esc(b)}" role="button" tabindex="0" title="단가와 업무 현황 보기">${x}</span>`}
 const multiCmp=(x,y)=>{const q=a=>a.reduce((s,o)=>s+(Number(o.qty)||0),0);return (y.length-x.length)||(q(y)-q(x))||String(x[0].code).localeCompare(String(y[0].code))};
-function fcode0(c){const x=fcode00(c);return TKSET.has(String(c).replace(/\s+/g,''))?`<span class="pnh" title="업무 관리에 상태 정보가 있는 품번">${x}</span>`:x}
+function fcode0(c){let x=fcode00(c);if(window.WKSET&&window.WKSET.has(String(c).replace(/\s+/g,'')))x='<span class="pnw">'+x+'</span>';return TKSET.has(String(c).replace(/\s+/g,''))?`<span class="pnh" title="업무 관리에 상태 정보가 있는 품번">${x}</span>`:x}
 function fcode00(c){const b=String(c).replace(/\s+/g,'');const i=b.search(/-|AS/);const base=i>=0?b.slice(0,i):b,suf=i>=0?b.slice(i):'';const n=base.length>=9?5:base.length===8?4:0;return n?`<span class="pn1">${esc(base.slice(0,n))}</span><span class="pn2">${esc(base.slice(n)+suf)}</span>`:`<span class="pn1 one">${esc(b)}</span>`}
 function sInfo(o){const d=String(o.detail);let days=-1;const T=new Date();T.setHours(0,0,0,0);
 for(const m of d.matchAll(/(\d{2})\.(\d{2})(\d{2})/g)){const t=new Date(`20${m[1]}-${m[2]}-${m[3]}`);if(!isNaN(t))days=Math.max(days,Math.ceil((T-t)/864e5))}
@@ -1261,7 +1261,7 @@ function taskByStatus(items,sp){const ord=SG.flatMap(x=>x[1]).concat(['기타'])
 const ks=Object.keys(gs).sort((a,b)=>{const x=ord.indexOf(a),y=ord.indexOf(b);return (x<0?999:x)-(y<0?999:y)});
 return ks.map(k=>{const a=gs[k],on=a.filter(o=>!o.done).length;return `<div class="stg"><div class="stgh"><span class="pill" style="background:${SM[k]||'#64748b'}">${esc(k)}</span><span class="pdb t">${a.length}건</span>${on<a.length?`<span class="pdb i">진행 <b>${on}</b></span><span class="pdb c">완료 <b>${a.length-on}</b></span>`:''}</div>${taskTable(a,sp)}</div>`}).join('')}
 const PHK=new Set();
-const phkOpen=o=>{const c=ncode(o.r[SK.I['품번']]);return PHK.has(c)?phkHtml(c):''};
+const phkOpen=o=>{const c=ncode(o.r[SK.I['품번']]);return (PHK.has(c)?phkHtml(c):'')+(window.wkPnHtml?window.wkPnHtml(c):'')};
 function phkHtml(code,nox){const ts=TASK.filter(t=>ncode(t.code)===code).sort((a,b)=>(a.done-b.done)||String(b.date).localeCompare(String(a.date)));if(!ts.length)return'';
 const on=ts.filter(t=>!t.done).length,VC=VCOLS.filter(c=>c.k==='qty');
 const di=o=>`${o.supplier?`<span class="sm spb" style="display:inline;font-size:inherit;font-weight:700;color:#5b21b6;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:999px;padding:0 9px;margin-right:6px;white-space:nowrap">${esc(o.supplier)}</span>`:''}${o.detail&&o.detail!=='-'?hlD(o.detail):''}${o.sp2?` <span class="sm" style="display:inline;font-size:inherit;font-weight:700;color:#475569;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:999px;padding:0 9px;white-space:nowrap">${esc(o.sp2)}</span>`:''}${o.done?'<span class="okb">완료</span>':''}`;
@@ -1321,7 +1321,7 @@ else html+=`<div class="pr"><h3>단가 정보</h3><div class="empty">재고관�
 const on=ts.filter(t=>!t.done).length;
 const sd=g('출고일자'),sb=g('출고지점'),bd=(sd?`<span class="pdb d" title="출고일자">출고일자 <b>${esc(sd)}</b></span>`:'')+(sb?`<span class="pdb b" title="출고지점">출고지점 <b>${esc(sb)}</b></span>`:'');
 html+=stkMiniHtml(o);
-html+=ts.length?`<div class="pmx" style="margin-top:14px">${phkHtml(code,1)}</div>`:'';
+html+=ts.length?`<div class="pmx" style="margin-top:14px">${phkHtml(code,1)}</div>`:'';html+=window.wkPnHtml?window.wkPnHtml(code):'';
 const nm=o?g('품명'):(ts[0]?ts[0].name:''),ev=o?g('빵빵'):(ts[0]?ts[0].ev:''),ad=o?g('주소'):'';
 $('pm-t').innerHTML=`<span style="font-size:20px">${fcode(code,true)}</span><span class="pmn">${esc(nm)}${badge({ev})}</span>${ad?`<span class="adr2">${esc(ad)}</span>`:''}`;
 return html}

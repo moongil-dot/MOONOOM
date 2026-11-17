@@ -1383,20 +1383,19 @@ function closePn(){$('pmodal').classList.remove('on')}
  let C={code:'',nm:''};
  const $$=i=>document.getElementById(i);
  const dtx=()=>{const p=($$('psa-sd').value||ymdS(new Date())).split('-');return p.length===3?String(p[0]).slice(2)+'.'+p[1]+p[2]:''};
- const ttl=()=>'[품번관리] '+(isPh()?'스마트폰':'PC')+($$('psa-u').checked?' 긴급':'')+' / '+dtx();
+ const ttl=()=>'[품번관리] '+(isPh()?'스마트폰':'PC')+' / '+dtx();
  const itx=()=>[C.code,C.nm,dtx(),$$('psa-c').value.trim()].filter(Boolean).join(' ');
  const prev=()=>{$$('psa-t').textContent=ttl();$$('psa-i').textContent=itx()};
  function build(){if($$('m-psa'))return;const d=document.createElement('div');d.className='mdl';d.id='m-psa';
   d.innerHTML='<div class="box"><div class="mh2"><h3>일정에 추가</h3><button class="mx" type="button" id="psa-x" aria-label="닫기">×</button></div>'
   +'<div class="fld"><label>일정 제목 (자동)</label><div id="psa-t" style="font-weight:700;color:#1e3a8a;word-break:break-all"></div></div>'
-  +'<label class="psa-u"><input type="checkbox" id="psa-u"> 긴급 일정</label>'
   +'<div class="fld"><label>날짜</label><input type="date" id="psa-sd"></div>'
   +'<div class="fld"><label>체크리스트에 추가할 내용</label><textarea id="psa-c" rows="3" placeholder="예: 재고 확인 필요"></textarea><div class="psa-h">추가될 항목: <b id="psa-i"></b></div></div>'
   +'<div class="ft"><div></div><div class="fbtn"><button class="cb" type="button" id="psa-no">취소</button><button class="bigsave" type="button" id="psa-ok">추가</button></div></div></div>';
   document.body.appendChild(d);
   const cl=()=>d.classList.remove('on');
   d.addEventListener('click',e=>{if(e.target===d)cl()});
-  $$('psa-x').onclick=cl;$$('psa-no').onclick=cl;$$('psa-u').onchange=prev;$$('psa-sd').onchange=prev;$$('psa-c').oninput=prev;$$('psa-ok').onclick=save}
+  $$('psa-x').onclick=cl;$$('psa-no').onclick=cl;$$('psa-sd').onchange=prev;$$('psa-c').oninput=prev;$$('psa-ok').onclick=save}
  const msg=(k,t)=>{try{if(typeof note==='function')note(k,t);else alert(t)}catch(e){}};
  function save(){const sd=$$('psa-sd').value;if(!sd){msg('err','날짜를 정해 주세요.');return}
   const text=itx(),title=ttl(),iid='phi-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -1407,7 +1406,7 @@ function closePn(){$('pmodal').classList.remove('on')}
   try{let q=JSON.parse(localStorage.getItem('ph-sch')||'[]');if(!Array.isArray(q))q=[];const lim=Date.now()-14*864e5;q=q.filter(x=>x&&x.id&&x.text&&(x.at||0)>=lim);q.push({id:iid,title,startDate:sd,text,at:Date.now()});localStorage.setItem('ph-sch',JSON.stringify(q.slice(-300)));$$('m-psa').classList.remove('on');msg('ok','담아 뒀어요. 관리 › 📤 보내기를 누르면 PC 일정 달력의 체크리스트에 들어가요 · '+title)}catch(e){msg('err','저장하지 못했어요.')}}
  document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-schadd]');if(!b)return;e.preventDefault();e.stopPropagation();build();
   let cd=b.dataset.schadd;try{const tmp=document.createElement('div');tmp.innerHTML=fcode(cd,true);const pp=[...tmp.querySelectorAll('.pn1,.pn2')].map(x=>x.textContent);cd=(pp.length?pp.join(' '):(tmp.textContent||cd)).replace(/\s+/g,' ').trim()||cd}catch(e){}
-  C={code:cd,nm:b.dataset.schnm||''};$$('psa-u').checked=false;$$('psa-c').value='';$$('psa-sd').value=ymdS(new Date());prev();$$('m-psa').classList.add('on');setTimeout(()=>{try{$$('psa-c').focus()}catch(e){}},50)},true);
+  C={code:cd,nm:b.dataset.schnm||''};$$('psa-c').value='';$$('psa-sd').value=ymdS(new Date());prev();$$('m-psa').classList.add('on');setTimeout(()=>{try{$$('psa-c').focus()}catch(e){}},50)},true);
 })();
 
 /* ===== 엑셀 읽기 ===== */

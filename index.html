@@ -1436,7 +1436,7 @@ if(!o)return `<tr${bg}>${cc}${cols.map(([n,i])=>n==='처리단가'?cell(it,n,i):
 return `<tr${bg}>${cc}${cols.map(([n,i])=>cell(it,n,i)).join('')}</tr>`}).join('');
 return `<div class="wrap"><table class="pmstk">${head}<tbody>${rows}</tbody></table></div>`}
 function hwStatusHtml(code){try{const I=SK.I,o=SROWS.find(s=>ncode(s.r[I['품번']])===code);if(!o)return '';const ks=hwList(o.r);if(!ks.length)return '';const set=new Set(ks);
-const L=SROWS.filter(s=>hwList(s.r).some(c=>set.has(c))).sort((a,b)=>String(a.r[I['품번']]).localeCompare(String(b.r[I['품번']])));if(!L.length)return '';
+const L=SROWS.filter(s=>hwList(s.r).some(c=>set.has(c))).filter(s=>ncode(s.r[I['품번']])!==code).sort((a,b)=>String(a.r[I['품번']]).localeCompare(String(b.r[I['품번']])));if(!L.length)return '';
 return `<div class="pr pwk" style="margin-top:14px"><h3 style="display:flex;align-items:baseline;gap:6px 10px;flex-wrap:wrap"><span>호환 현황 <span style="font-weight:700;font-size:12px;color:var(--mute)">호환 코드 ${ks.map(esc).join(', ')}</span></span><span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--mute)">${L.length}개 품번</span></h3>${stkListTbl(L.map(s=>({code:ncode(s.r[I['품번']]),o:s,cur:ncode(s.r[I['품번']])===code})),'hw')}</div>`}catch(e){return ''}}
 function pnHtml(code){
 const I=SK.I,o=SROWS.find(s=>ncode(s.r[I['품번']])===code),ts=TASK.filter(t=>ncode(t.code)===code).sort((a,b)=>(a.done-b.done)||String(b.date).localeCompare(String(a.date)));

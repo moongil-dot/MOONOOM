@@ -725,7 +725,8 @@ async function unzipS(b64){const bin=atob(b64),u=new Uint8Array(bin.length);for(
 function schNote(t){const n=$('sch-note');if(n){n.textContent=t;clearTimeout(schNoteT);schNoteT=setTimeout(()=>{n.textContent=''},5000)}}
 function schSave(){const s=JSON.stringify({w:SCH.data,g:SCH.groups});schLast=s;try{localStorage.setItem('sch-data',s)}catch(e){schNote('이 브라우저에 저장하지 못했어요.')}
 if(DBX&&CANW!==false){clearTimeout(schT);schT=setTimeout(async()=>{try{{const z=await zipS(s);await DBX.doc('schedule/main').set(z?{z:1,data:z,at:Date.now()}:{data:s,at:Date.now()})}}catch(e){schNote(e&&e.code==='invalid_argument'?'일정 데이터가 공유 저장 용량을 넘어서 이 브라우저에만 저장돼요.':'공유 저장에 실패했어요. 이 브라우저에는 저장됐어요.')}},800)}}
-async function schApplyShared(sn){if(!sn.exists){if(Object.keys(SCH.data).length&&DBX&&CANW!==false)schSave();return}const d=sn.data()||{};if(typeof d.data!=='string')return;
+let SNT=0;async function schnewSync(){if(typeof OD!=='undefined')return;if(Date.now()-SNT<60000)return;SNT=Date.now();try{if(!DBX||CANW===false)return;const sn=await DBX.doc('settings/schnew').get();if(!sn||!sn.exists)return;const d=sn.data()||{},L=Array.isArray(d.list)?d.list:[],done=Array.isArray(d.done)?d.done:[];if(!L.length)return;const have=new Set();Object.keys(SCH.data).forEach(k=>(SCH.data[k]||[]).forEach(e=>have.add(e.id)));let n=0;const ids=[];L.forEach(x=>{if(!x||!x.id||!x.startDate||done.includes(x.id))return;ids.push(x.id);if(have.has(x.id))return;const ev=Object.assign({},x);delete ev.at;ev.type='basic';ev.seriesId=ev.seriesId||ev.id;ev.checklistItems=ev.checklistItems||[];ev.overrides=ev.overrides||{};ev.recurrence=ev.recurrence||'none';ev.endDate=ev.endDate||ev.startDate;(SCH.data[ev.startDate]||(SCH.data[ev.startDate]=[])).push(ev);have.add(ev.id);n++});if(!ids.length)return;if(n){schSave();try{renderSch()}catch(e){}}await DBX.doc('settings/schnew').set({list:L.filter(x=>!(x&&ids.includes(x.id))),done:[...done,...ids].slice(-500),at:Date.now()});if(n)schNote('스마트폰에서 보낸 품번 일정 '+n+'건을 달력에 넣었어요.')}catch(e){}}
+async function schApplyShared(sn){setTimeout(schnewSync,1500);if(!sn.exists){if(Object.keys(SCH.data).length&&DBX&&CANW!==false)schSave();return}const d=sn.data()||{};if(typeof d.data!=='string')return;
 try{const raw=d.z?await unzipS(d.data):d.data;if(raw===schLast)return;const o=JSON.parse(raw);SCH.data=o.w||{};SCH.groups=o.g||{};schLast=raw;try{localStorage.setItem('sch-data',raw)}catch(e){}if(curTab==='daily')renderSch()}catch(e){}}
 const fm=sid=>{if(!sid)return null;for(const k in SCH.data){const f=SCH.data[k].find(e=>e.seriesId===sid||e.id===sid);if(f)return f}return null};
 const colorCat=i=>{const c=i.category||'';if(isLeave(c))return 'purple';if(c.includes('일상'))return 'green';if(!(c.includes('[')||c.includes(']')))return 'black';return 'blue'};
@@ -1370,10 +1371,46 @@ const sd=g('출고일자'),sb=g('출고지점'),bd=(sd?`<span class="pdb d" titl
 html+=stkMiniHtml(o);
 html+=ts.length?`<div class="pmx" style="margin-top:14px">${phkHtml(code,1)}</div>`:'';html+=window.wkPnHtml?window.wkPnHtml(code):'';
 const nm=o?g('품명'):(ts[0]?ts[0].name:''),ev=o?g('빵빵'):(ts[0]?ts[0].ev:''),ad=o?g('주소'):'';
-$('pm-t').innerHTML=`<span style="font-size:20px">${fcode(code,true)}</span><span class="pmn">${esc(nm)}${badge({ev})}</span>${ad?`<span class="adr2">${esc(ad)}</span>`:''}`;
+$('pm-t').innerHTML=`<span style="font-size:20px">${fcode(code,true)}</span><span class="pmn">${esc(nm)}${badge({ev})}</span>${ad?`<span class="adr2">${esc(ad)}</span>`:''}`; html=`<div class="pn-sch"><button type="button" class="pn-schb" data-schadd="${esc(code)}" data-schnm="${esc(nm)}">📅 일정에 추가</button></div>`+html;
 return html}
 function openPn(code){code=ncode(code);$('pm-c').innerHTML=pnHtml(code);$('pmodal').classList.add('on');$('pm-c').scrollTop=0}
 function closePn(){$('pmodal').classList.remove('on')}
+/* ===== 품번 상세 › 일정에 추가 (PC는 바로 일정 달력에, 스마트폰은 📤 보내기로 PC 일정에 전달) ===== */
+(()=>{const E=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ try{const st=document.createElement('style');st.textContent='.pn-sch{display:flex;justify-content:flex-end;margin:0 0 10px}.pn-schb{font:inherit;font-weight:700;font-size:13px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:7px 14px;cursor:pointer}.pn-schb:active{background:#dbeafe}#m-psa .psa-u{display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-weight:700;font-size:13px;color:#374151}#m-psa .psa-u input{width:18px;height:18px;accent-color:#dc2626}#m-psa .psa-h{font-size:12px;color:#64748b;margin-top:2px}#m-psa textarea,#m-psa input[type=date],#m-psa select{width:100%;box-sizing:border-box;font:inherit}';document.head.appendChild(st)}catch(e){}
+ const pad=n=>String(n).padStart(2,'0'),ymdS=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+ let C={code:'',nm:'',dirty:false};
+ const ttl=()=>{const sd=(document.getElementById('psa-sd')||{}).value||ymdS(new Date());const p=sd.split('-');const dt=p.length===3?String(p[0]).slice(2)+'.'+p[1]+p[2]:'';return '[품번관리] '+C.code+(C.nm?' '+C.nm:'')+(document.getElementById('psa-u').checked?' 긴급':'')+(dt?' / '+dt:'')};
+ const auto=()=>{if(C.dirty)return;document.getElementById('psa-t').value=ttl()};
+ function build(){if(document.getElementById('m-psa'))return;const d=document.createElement('div');d.className='mdl';d.id='m-psa';
+  d.innerHTML='<div class="box"><div class="mh2"><h3>품번 일정 추가</h3><button class="mx" type="button" id="psa-x" aria-label="닫기">×</button></div>'
+  +'<div class="fld"><label>구분 (제목 자동 생성)</label><textarea id="psa-t" rows="2"></textarea><div class="psa-h">[품번관리] 품번 품명 긴급 / 날짜 순서로 만들어져요. 직접 고쳐도 돼요.</div></div>'
+  +'<label class="psa-u"><input type="checkbox" id="psa-u"> 긴급 일정</label>'
+  +'<div class="fld"><label>1행: 내용</label><textarea id="psa-c" rows="3" placeholder="자유롭게 메모를 입력하세요"></textarea></div>'
+  +'<div class="g2"><div class="fld"><label>시작일</label><input type="date" id="psa-sd"></div><div class="fld"><label>종료일</label><input type="date" id="psa-ed"></div></div>'
+  +'<div class="fld"><label>상태</label><select id="psa-st"><option value="waiting">대기</option><option value="completed">완료</option></select></div>'
+  +'<div class="ft"><div></div><div class="fbtn"><button class="cb" type="button" id="psa-no">취소</button><button class="bigsave" type="button" id="psa-ok">저장</button></div></div></div>';
+  document.body.appendChild(d);
+  const cl=()=>d.classList.remove('on');
+  d.addEventListener('click',e=>{if(e.target===d)cl()});
+  document.getElementById('psa-x').onclick=cl;document.getElementById('psa-no').onclick=cl;
+  document.getElementById('psa-u').onchange=auto;
+  document.getElementById('psa-sd').onchange=()=>{const a=document.getElementById('psa-sd').value,b=document.getElementById('psa-ed');if(a&&(!b.value||b.value<a))b.value=a;auto()};
+  document.getElementById('psa-t').oninput=()=>{C.dirty=true};
+  document.getElementById('psa-ok').onclick=save}
+ const msg=(k,t)=>{try{if(typeof note==='function')note(k,t);else alert(t)}catch(e){}};
+ function save(){const sd=document.getElementById('psa-sd').value;if(!sd){msg('err','시작일은 필수예요.');return}
+  const ed=document.getElementById('psa-ed').value||sd,cat=document.getElementById('psa-t').value.trim()||ttl(),id='phs-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const ev={id,seriesId:id,type:'basic',content:document.getElementById('psa-c').value.trim(),category:cat,startDate:sd,endDate:ed<sd?sd:ed,status:document.getElementById('psa-st').value,recurrence:'none',checklistItems:[],overrides:{}};
+  const phone=typeof OD!=='undefined'&&typeof odToken==='function';
+  if(!phone&&typeof SCH!=='undefined'&&typeof schSave==='function'){(SCH.data[sd]||(SCH.data[sd]=[])).push(ev);schSave();try{renderSch()}catch(e){}document.getElementById('m-psa').classList.remove('on');msg('ok','일정 달력에 추가했어요 · '+cat);return}
+  try{let q=JSON.parse(localStorage.getItem('ph-sch')||'[]');if(!Array.isArray(q))q=[];const lim=Date.now()-14*864e5;q=q.filter(x=>x&&x.id&&(x.at||0)>=lim);q.push(Object.assign({at:Date.now()},ev));localStorage.setItem('ph-sch',JSON.stringify(q.slice(-200)));document.getElementById('m-psa').classList.remove('on');msg('ok','일정을 담아 뒀어요. 관리 › 📤 보내기를 누르면 PC 일정 달력에 들어가요 · '+cat)}catch(e){msg('err','일정을 저장하지 못했어요.')}}
+ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-schadd]');if(!b)return;e.preventDefault();e.stopPropagation();build();
+  let cd=b.dataset.schadd;try{const tmp=document.createElement('div');tmp.innerHTML=fcode(cd,true);const pp=[...tmp.querySelectorAll('.pn1,.pn2')].map(x=>x.textContent);cd=(pp.length?pp.join(' '):(tmp.textContent||cd)).replace(/\s+/g,' ').trim()||cd}catch(e){}C={code:cd,nm:b.dataset.schnm||'',dirty:false};const t=ymdS(new Date());
+  document.getElementById('psa-u').checked=false;document.getElementById('psa-c').value='';document.getElementById('psa-sd').value=t;document.getElementById('psa-ed').value=t;document.getElementById('psa-st').value='waiting';
+  auto();document.getElementById('m-psa').classList.add('on')},true);
+})();
+
 /* ===== 엑셀 읽기 ===== */
 function parseStk(aoa){const T=c=>String(c==null?'':c).trim();
 const hi=aoa.findIndex(r=>r&&r.some(c=>T(c)==='품번')&&r.some(c=>T(c)==='품명'));if(hi<0)throw new Error(`'재고관리' 탭에서 '품번'과 '품명' 제목 줄을 찾지 못했어요.`);
@@ -1509,7 +1546,7 @@ body.phone-mode #p-stk.ph-av:not(.ms-am)>#ph-am#ph-am{display:none!important}
  const NOTE=(k,t)=>{try{if(typeof note==='function')note(k,t);else alert(t)}catch(e){}};
  async function phSend(){const btn=document.querySelector('#ph-msub [data-send]');if(btn&&btn.disabled)return;
   const J=k=>{try{const v=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}};
-  const data={app:'통합 대시보드',kind:'일별피킹현황',v:1,savedAt:new Date().toISOString(),pick:pickLog(),inv:J('ph-inv').filter(x=>x&&!x.m),addr:J('ph-addr-chg')};
+  const data={app:'통합 대시보드',kind:'일별피킹현황',v:1,savedAt:new Date().toISOString(),pick:pickLog(),inv:J('ph-inv').filter(x=>x&&!x.m),addr:J('ph-addr-chg'),sch:(()=>{const lim=Date.now()-14*864e5;return J('ph-sch').filter(x=>x&&x.id&&(x.at||0)>=lim)})()};
   if(typeof OD==='undefined'||!window.phWTok){NOTE('err','원드라이브에 연결된 화면(GitHub 주소로 연 스마트폰)에서 눌러 주세요.');return}
   if(btn){btn.disabled=true;btn.textContent='⏳'}
   try{const tok=await window.phWTok();if(!tok){NOTE('err','원드라이브 쓰기 로그인이 필요해요. 조사 화면의 [쓰기 권한으로 로그인]을 먼저 눌러 주세요.');return}
@@ -1517,7 +1554,7 @@ body.phone-mode #p-stk.ph-av:not(.ms-am)>#ph-am#ph-am{display:none!important}
    const r=await fetch('https://graph.microsoft.com/v1.0/me/drive/root:/'+path.split('/').map(encodeURIComponent).join('/')+':/content',{method:'PUT',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(data)});
    if(!r.ok)throw new Error('HTTP '+r.status);
    try{localStorage.setItem('ph-send-at',String(Date.now()))}catch(e){}
-   NOTE('ok',`원드라이브 ${dir.replace(/\/$/,'')} 폴더에 일별피킹현황.json 을 저장했어요 (피킹 ${data.pick.length}건 · 증감 ${data.inv.length}건 · 주소 ${data.addr.length}건)`)}
+   NOTE('ok',`원드라이브 ${dir.replace(/\/$/,'')} 폴더에 일별피킹현황.json 을 저장했어요 (피킹 ${data.pick.length}건 · 증감 ${data.inv.length}건 · 주소 ${data.addr.length}건${data.sch.length?' · 일정 '+data.sch.length+'건':''})`)}
   catch(e){NOTE('err','원드라이브에 저장하지 못했어요 ('+(e&&e.message||'오류')+'). 잠시 뒤 다시 눌러 주세요.')}
   finally{if(btn){btn.disabled=false;btn.textContent='📤'}}}
  /* 피킹 기록은 저장 공간(settings/pick)으로 휴대폰·PC가 함께 써요 */

@@ -21,6 +21,8 @@
   {c:'rep',a:'ackDone',g:'🎉 오늘 작업 완료 보고',d:'종결 지점을 뺀 나머지가 모두 완료되면 하루가 보고',k:'doneMs',l:'말풍선 보이는 시간',t:'num',u:'초',v:20,min:3,max:600},
   {c:'rep',g:'📱 피킹현황 파일 저장 확인',d:'월~토요일 저녁, 하루가 휴대폰 피킹현황 파일을 원드라이브에 저장했는지 간격을 두고 계속 물어봐요 (말풍선의 확인은 잠깐 닫기, 완료를 누르면 그날 알림 종료)',k:'pkAskAt',l:'물어보기 시작 시각',t:'time',v:1050},
   {k:'pkEvery',l:'물어보는 간격',t:'num',u:'분',v:15,min:5,max:240},
+  {c:'rep',g:'🏠 퇴근 보고 알림',d:'월~토요일 저녁, 하루가 말풍선으로 퇴근 보고 버튼을 눌러 달라고 알려 줘요 (일정달력의 퇴근 보고를 누르면 그날 알림 종료)',k:'outAt',l:'알림 시작 시각',t:'time',v:1080},
+  {k:'outEvery',l:'알림 간격',t:'num',u:'분',v:15,min:5,max:240},
   {c:'cal',a:'ackSch',g:'🗓️ 일정 보고 말풍선',d:'일정 달력에서 완료·이동·추가하면 하루가 바로 알려 주는 말풍선',k:'schRecMs',l:'반복 일정 완료 (다음 일정 안내)',t:'num',u:'초',v:15,min:3,max:600},
   {k:'schDetMs',a:'ackSch',l:'자세한 내용이 붙는 보고',t:'num',u:'초',v:10,min:3,max:600},
   {k:'schMs',a:'ackSch',l:'그 밖의 일정 보고',t:'num',u:'초',v:8,min:3,max:600},
@@ -850,7 +852,7 @@ function renderSch(){const root=$('sch-root');if(!root)return;schMig();const c=c
 root.innerHTML=`<div class="panel" id="sch-ov">${ovH()}</div><div class="panel" id="sch-cal"><div class="sch-bar"><div class="pill-g"><button data-act="mode" data-v="2-day" class="${SCH.mode==='2-day'?'on':''}" type="button">2일 보기</button><button data-act="mode" data-v="weekly" class="${SCH.mode==='weekly'?'on':''}" type="button">주간 보기</button><button data-act="mode" data-v="monthly" class="${SCH.mode==='monthly'?'on':''}" type="button">월간 보기</button><button data-act="today" type="button">📅 오늘</button></div>
 <div class="pill-g"><button data-act="done" class="${SCH.showDone?'on':''}" type="button"><i style="background:#9ca3af"></i>완료</button><button data-act="sun" class="${SCH.showSun?'on':''}" type="button" title="일요일 표시/숨기기">${SCH.showSun?'일요일 숨기기':'일요일 보이기'}</button><button data-goto="rep" type="button">📋 오늘의 작업 보고서 ↓</button></div>
 <div class="nav"><button data-act="prev" type="button" aria-label="이전">‹</button><b>${c.head}</b><button data-act="next" type="button" aria-label="다음">›</button></div></div>
-<div class="sch-tools"><span id="sch-stat" class="shnote" style="font-weight:700">${schStatH()}</span><span id="sch-note" class="shnote"></span><span id="sch-bkat" class="shnote">${schBkH()}</span><button class="cb" data-act="exp" type="button">퇴근 보고</button><button class="cb" data-act="imp" type="button">백업 불러오기</button></div>${c.html}</div>`;
+<div class="sch-tools"><span id="sch-stat" class="shnote" style="font-weight:700">${schStatH()}</span><span id="sch-note" class="shnote"></span><span id="sch-bkat" class="shnote">${schBkH()}</span><button class="cb" data-act="imp" type="button">백업 불러오기</button></div>${c.html}</div>`;
 if(SCH.tab==='search')schSearch();else ovApply();}
 /* --- 일정 모달 --- */
 let BM={items:[],sid:'',id:''},CM={items:[],sid:''};
@@ -928,21 +930,26 @@ function schBkH(){if(!schBkAt)return '저장된 날짜 없음';const d=new Date(
 function schBkShow(){const n=document.getElementById('sch-bkat');if(n)n.textContent=schBkH()}
 async function schBkRead(){try{if(!DBX)return;const sn=await DBX.doc('settings/schbk').get();if(sn&&sn.exists){const a=+((sn.data()||{}).at)||0;if(a>schBkAt){schBkAt=a;try{localStorage.setItem('sch-bk-at',String(a))}catch(e){}schBkShow()}}}catch(e){}}
 async function schBkMark(){schBkAt=Date.now();try{localStorage.setItem('sch-bk-at',String(schBkAt))}catch(e){}schBkShow();try{if(DBX&&CANW!==false)await DBX.doc('settings/schbk').set({at:schBkAt})}catch(e){}}
-function schBkTxt(){return JSON.stringify({metadata:{type:'integrated_backup',version:'1.2',exportedAt:new Date().toISOString()},workSchedule:SCH.data,checklistGroups:SCH.groups})}
-async function schExport(){const txt=schBkTxt();let mcp=null;try{mcp=window.claude&&claude.use?await claude.use('mcp'):null}catch(e){}
-let pre='';
-if(mcp&&new Blob([txt]).size<=1000000){schNote('OneDrive에 저장 중…');try{await mcp.callTool('Microsoft 365','sharepoint_upload_file',{driveId:SBK.drv,parentItemId:SBK.dir,filename:SBK.name,content:txt,conflictBehavior:'replace'});await schBkMark();schNote('OneDrive 평우서비스 폴더에 "일정달력"으로 저장했어요.');return}catch(e){const c=e&&e.code;pre=c==='approval_required'||c==='not_in_manifest'||c==='consent_required'?'OneDrive 저장을 허용해 주세요. ':c==='server_not_connected'||c==='needs_reauth'||c==='selection_required'?'claude.ai 설정의 커넥터에서 Microsoft 365를 연결해 주세요. ':'OneDrive 저장에 실패했어요('+(c||'오류')+'). '}}
-return schExportFile(txt,pre)}
+function schBkTxt(noWork){return JSON.stringify({metadata:{type:'integrated_backup',version:'1.2',exportedAt:new Date().toISOString()},workSchedule:SCH.data,checklistGroups:SCH.groups,dailyWork:(!noWork&&typeof DW!=='undefined'&&DW&&DW.B)?dwData():null})}
+const SBK_SUB='01WL3H27OOUI6CKBQENNC3ICJ6N3SB77WI',SBK_KEEP=7;
+function schBkStamp(d){d=d||new Date();return String(d.getFullYear()).slice(2)+'.'+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')}
+async function schBkClean(mcp){try{const r=await mcp.callTool('Microsoft 365','read_resource',{uri:'file:///'+SBK.drv+'/'+SBK_SUB});let t=r&&r.payload!==undefined?r.payload:r;t=typeof t==='string'?t:JSON.stringify(t);const lim=new Date();lim.setHours(0,0,0,0);lim.setDate(lim.getDate()-SBK_KEEP);const re=/((?:일정달력|작업)\.(\d{2})\.(\d{2})(\d{2})\.json) \(file, \d+ bytes\) file:\/\/\/[^\s\/]+\/([A-Za-z0-9]{34})/g;let m,n=0;while((m=re.exec(t))){const d=new Date(2000+ +m[2],+m[3]-1,+m[4]);if(d<lim){await mcp.callTool('Microsoft 365','sharepoint_delete_item',{driveId:SBK.drv,itemId:m[5]});n++}}return n}catch(e){return -1}}
+async function schExport(){let mcp=null;try{mcp=window.claude&&claude.use?await claude.use('mcp'):null}catch(e){}
+let pre='';const st=schBkStamp();let txt=schBkTxt(),extra=null;
+if(new Blob([txt]).size>1000000){txt=schBkTxt(true);extra=JSON.stringify(dwData())}
+if(mcp&&new Blob([txt]).size<=1000000&&(!extra||new Blob([extra]).size<=1000000)){schNote('OneDrive에 저장 중…');try{await mcp.callTool('Microsoft 365','sharepoint_upload_file',{driveId:SBK.drv,parentItemId:SBK_SUB,filename:'일정달력.'+st+'.json',content:txt,conflictBehavior:'replace'});if(extra)await mcp.callTool('Microsoft 365','sharepoint_upload_file',{driveId:SBK.drv,parentItemId:SBK_SUB,filename:'작업.'+st+'.json',content:extra,conflictBehavior:'replace'});await schBkMark();const n=await schBkClean(mcp);schNote('OneDrive 평우서비스 › 일정달력 폴더에 "일정달력.'+st+'"로 저장했어요.'+(n>0?' (일주일 지난 '+n+'개 삭제)':'')+(n<0?' (오래된 파일 정리는 못 했어요)':''));return}catch(e){const c=e&&e.code;pre=c==='approval_required'||c==='not_in_manifest'||c==='consent_required'?'OneDrive 저장을 허용해 주세요. ':c==='server_not_connected'||c==='needs_reauth'||c==='selection_required'?'claude.ai 설정의 커넥터에서 Microsoft 365를 연결해 주세요. ':'OneDrive 저장에 실패했어요('+(c||'오류')+'). '}}
+return schExportFile(schBkTxt(),pre)}
+window.schExport=schExport;
 async function schExportFile(txt,pre){pre=pre||'';const fn='일정달력.json',blob=new Blob([txt],{type:'application/json'});
 let dl=null;try{dl=window.claude&&claude.use?await claude.use('downloads'):null}catch(e){}
 if(dl){try{const r=await dl.save({filename:fn,data:blob});await schBkMark();schNote(pre+(r&&r.status==='delivered'?'파일을 전달했어요.':'일정을 파일로 저장했어요.'))}catch(e){schNote(pre+(e&&e.code==='declined'?'저장을 취소했어요.':'파일로 저장하지 못했어요. ('+((e&&e.code)||'오류')+')'))}return}
 try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),2000);await schBkMark();schNote(pre+'일정을 파일로 저장했어요.')}catch(e){schNote(pre+'이 화면에서는 파일 저장을 쓸 수 없어요.')}}
 function schPw(){const old=document.getElementById('sch-pw');if(old)old.remove();const w=document.createElement('div');w.id='sch-pw';w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100000;display:flex;align-items:center;justify-content:center';w.innerHTML='<div style="background:#fff;color:#111;border-radius:12px;padding:18px;width:min(320px,90vw);box-shadow:0 8px 30px rgba(0,0,0,.3)"><b>백업 불러오기</b><p style="margin:8px 0;font-size:13px;color:#555">일정 데이터가 사라졌을 때만 쓰는 기능이에요. 비밀번호를 입력해 주세요.</p><input type="password" inputmode="numeric" autocomplete="off" id="sch-pw-i" style="width:100%;box-sizing:border-box;padding:8px;font-size:16px;border:1px solid #ccc;border-radius:8px"><div id="sch-pw-m" style="color:#dc2626;font-size:12px;min-height:16px;margin-top:4px"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button type="button" class="cb" id="sch-pw-c">취소</button><button type="button" class="bigsave" id="sch-pw-o">확인</button></div></div>';document.body.appendChild(w);const i=document.getElementById('sch-pw-i');i.focus();const ok=()=>{if(i.value==='7123'){w.remove();$('sch-file').value='';$('sch-file').click()}else{document.getElementById('sch-pw-m').textContent='비밀번호가 맞지 않아요.';i.value='';i.focus()}};document.getElementById('sch-pw-o').onclick=ok;document.getElementById('sch-pw-c').onclick=()=>w.remove();i.addEventListener('keydown',e=>{if(e.key==='Enter')ok();if(e.key==='Escape')w.remove()})}
-let outSlot='';function outCheck(){try{const n=new Date(),m=n.getHours()*60+n.getMinutes();if(m<1080)return;const t=ymd(n);if(schBkAt){const b=new Date(schBkAt);if(ymd(b)===t&&b.getHours()>=17)return}const slot=t+':'+Math.floor((m-1080)/15);if(slot===outSlot)return;try{if(localStorage.getItem('out-slot')===slot){outSlot=slot;return}localStorage.setItem('out-slot',slot)}catch(e){}outSlot=slot;outShow()}catch(e){}}
-function outShow(){let b=document.getElementById('out-bn');if(b)b.remove();b=document.createElement('div');b.id='out-bn';b.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99999;background:#0369a1;color:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 6px 24px rgba(0,0,0,.35);display:flex;gap:10px;align-items:center;max-width:94vw;font-size:14px';b.innerHTML='<span>퇴근하시게 되면 <b>퇴근 보고</b> 버튼을 눌러주세요</span><button type="button" id="out-go" style="background:#fff;color:#0369a1;border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer">퇴근 보고</button><button type="button" id="out-x" aria-label="닫기" style="background:none;border:0;color:#fff;font-size:18px;cursor:pointer">×</button>';document.body.appendChild(b);document.getElementById('out-x').onclick=()=>b.remove();document.getElementById('out-go').onclick=()=>{b.remove();schExport()}}
-setInterval(outCheck,30000);setTimeout(outCheck,4000);
-function schImport(file){const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);let w=null,g=null;if(o&&o.workSchedule&&typeof o.workSchedule==='object'){w=o.workSchedule;g=o.checklistGroups||null}else if(o&&typeof o==='object'&&!Array.isArray(o)&&Object.keys(o).some(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)))w=o;if(!w)throw new Error('일정 데이터가 들어 있는 파일이 아니에요.');
-const n=Object.values(w).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0);if(!confirm(`일정 ${n}건을 불러와서 지금 일정을 바꿀까요?`))return;SCH.data=w;if(g)SCH.groups=g;schSave();renderSch();schNote(`일정 ${n}건을 불러왔어요.`)}catch(e){schNote(e.message||'파일을 읽지 못했어요.')}};r.readAsText(file)}
+let outSlot='';function schImport(file){const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);let w=null,g=null,dw=null;if(o&&o.workSchedule&&typeof o.workSchedule==='object'){w=o.workSchedule;g=o.checklistGroups||null}else if(o&&typeof o==='object'&&!Array.isArray(o)&&Object.keys(o).some(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)))w=o;
+if(o&&typeof o==='object'&&!Array.isArray(o)){if(o.dailyWork&&typeof o.dailyWork==='object')dw=o.dailyWork;else if(o.branchClassifications||Array.isArray(o.workerErrors)||Array.isArray(o.workerWorkloads)||o.direct||o.welfare)dw=o}
+if(!w&&!dw)throw new Error('일정·작업 데이터가 들어 있는 파일이 아니에요.');
+const n=w?Object.values(w).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0):0,msg=(w?`일정 ${n}건`:'')+(w&&dw?'과 ':'')+(dw?'일일 작업 데이터':'');if(!confirm(`${msg}을(를) 불러와서 지금 데이터를 바꿀까요?`))return;
+if(w){SCH.data=w;if(g)SCH.groups=g;schSave();renderSch()}if(dw)dwApplyBk(dw);schNote(`${msg}을(를) 불러왔어요.`)}catch(e){schNote(e.message||'파일을 읽지 못했어요.')}};r.readAsText(file)}
 function schInit(){schLoad();const root=$('sch-root');root.addEventListener('click',onSch);
 root.addEventListener('keydown',e=>{if(e.target.id==='sch-kw'&&e.key==='Enter'){e.preventDefault();SCH.kw=e.target.value.trim();schSearch()}});
 root.addEventListener('click',e=>{if(e.target.id==='sch-kwb'){const i=$('sch-kw');SCH.kw=i?i.value.trim():'';schSearch()}});
@@ -1127,7 +1134,7 @@ return `<div class="panel"><div class="dw-sh"><h3>📝 에러/미해결 상세 �
 
 function renderDw(){const root=$('dw-root');if(!root)return;const ds=dY(DW.date);
 const sb=[['rep','출고 작업'],['br','지점 검색']].map(([k,v])=>`<button data-dw="sub" data-v="${k}" class="${DW.sub===k?'on':''}">${v}<\/button>`).join('');
-root.innerHTML=`<div class="panel dw-top"><div class="dw-nav"><button data-dw="prev" aria-label="이전 날">‹<\/button><b>${dLab(DW.date)}<\/b><label class="dw-cal dw-calnav" title="날짜 선택">📅<input type="date" class="dw-ta" data-dw="date" value="${ds}"><\/label><button data-dw="next" aria-label="다음 날">›<\/button><\/div><div class="dw-tools"><span id="dw-note" class="shnote"><\/span><button class="cb" data-dw="exp">데이터 저장<\/button><button class="cb" data-dw="imp">데이터 불러오기<\/button><\/div><\/div>`+dwRepHtml(ds);
+root.innerHTML=`<div class="panel dw-top"><div class="dw-nav"><button data-dw="prev" aria-label="이전 날">‹<\/button><b>${dLab(DW.date)}<\/b><label class="dw-cal dw-calnav" title="날짜 선택">📅<input type="date" class="dw-ta" data-dw="date" value="${ds}"><\/label><button data-dw="next" aria-label="다음 날">›<\/button><\/div><div class="dw-tools"><span id="dw-note" class="shnote"><\/span><\/div><\/div>`+dwRepHtml(ds);
 root.querySelectorAll('textarea.dw-ta').forEach(dwGrow);if(window.rpBr)window.rpBr();if(DW.pop&&(!DW.m||!DW.m.t))dwRenderPop()}
 /* --- 모달 --- */
 const dwMd=h=>{const m=$('dw-modal');m.innerHTML=`<div class="dw-md">${h}<\/div>`;m.classList.remove('hide')};
@@ -1231,18 +1238,20 @@ if(k==='partNumber'&&v){const o=dwRecentPart(v.trim().toUpperCase(),x.id);['part
 dwSave();if(n>0)dwNote('같은 품번 항목의 품명/주소를 맞췄어요.');if(k==='person'||k==='content'||k==='quantity'||n>0)renderDw();return}
 if(t.dataset.pk==='partNumber'&&t.value.trim()){const tr=t.closest('tr'),pn=t.value.trim().toUpperCase(),o=dwRecentPart(pn,null);['partName','address'].forEach(f=>{const el=tr.querySelector('[data-pk="'+f+'"]');if(el&&!el.value&&o[f]){el.value=o[f];dwGrow(el)}})}}
 /* --- 불러오기 / 저장 --- */
-async function dwExport(){const o={branchClassifications:DW.B,workReportDate:DW.date.toISOString(),dailyReportAdditions:DW.add,dailyReportExclusions:DW.exc,recentInputs:{},workerErrors:DW.errs,workerWorkloads:DW.wl,errorFilters:{}},n=new Date(),fn='작업.'+String(n.getFullYear())+String(n.getMonth()+1).padStart(2,'0')+String(n.getDate()).padStart(2,'0')+'.json',blob=new Blob([JSON.stringify(o,null,2)],{type:'application/json'});
+function dwData(){return {branchClassifications:DW.B,workReportDate:DW.date.toISOString(),dailyReportAdditions:DW.add,dailyReportExclusions:DW.exc,recentInputs:{},workerErrors:DW.errs,workerWorkloads:DW.wl,errorFilters:{}}}
+async function dwExport(){const o=dwData(),n=new Date(),fn='작업.'+String(n.getFullYear())+String(n.getMonth()+1).padStart(2,'0')+String(n.getDate()).padStart(2,'0')+'.json',blob=new Blob([JSON.stringify(o,null,2)],{type:'application/json'});
 let dl=null;try{dl=window.claude&&claude.use?await claude.use('downloads'):null}catch(e){}
 if(dl){try{const r=await dl.save({filename:fn,data:blob});dwNote(r&&r.status==='delivered'?'파일을 전달했어요.':'일일 작업 데이터를 파일로 저장했어요.')}catch(e){dwNote(e&&e.code==='declined'?'저장을 취소했어요.':'파일로 저장하지 못했어요. ('+((e&&e.code)||'오류')+')')}return}
 try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),2000);dwNote('파일로 저장했어요.')}catch(e){dwNote('이 화면에서는 파일 저장을 쓸 수 없어요.')}}
-function dwImport(file){const r=new FileReader();r.onload=()=>{try{const L=JSON.parse(r.result),bd=L.branchClassifications||(L.direct||L.welfare?L:null);
-if(!bd&&!Array.isArray(L.workerErrors)&&!Array.isArray(L.workerWorkloads)){dwNote('일일 작업 데이터가 들어 있지 않은 파일이에요.');return}
+function dwApplyBk(L){const bd=L.branchClassifications||(L.direct||L.welfare?L:null);
+if(!bd&&!Array.isArray(L.workerErrors)&&!Array.isArray(L.workerWorkloads)){return false}
 if(bd){if(bd.franchise&&!bd.franchise_direct)bd.franchise_direct=bd.franchise;Object.keys(DWC).forEach(k=>{DW.B[k]=(Array.isArray(bd[k])?bd[k]:[]).filter(b=>b&&typeof b==='object').map(b=>({...b,id:b.id||dUid(),course:b.course||'A',dailyData:b.dailyData&&typeof b.dailyData==='object'?b.dailyData:{}}))})}
 if(L.dailyReportAdditions)DW.add=L.dailyReportAdditions;if(L.dailyReportExclusions)DW.exc=L.dailyReportExclusions;
 if(Array.isArray(L.workerErrors))DW.errs=L.workerErrors.map(x=>{if(x.content)x.content=String(x.content).replace(/안찾음|안찾은/g,'미해결');if(x.details)x.details=String(x.details).replace(/안찾음|안찾은/g,'미해결');return x});
 if(Array.isArray(L.workerWorkloads))DW.wl=L.workerWorkloads;
 if(L.workReportDate){const d=new Date(L.workReportDate);if(!isNaN(d))DW.date=d}
-dwSave();dwNote('일일 작업 데이터를 불러왔어요. (지점 '+Object.values(DW.B).reduce((a,b)=>a+b.length,0)+'개, 에러·미해결 '+DW.errs.length+'건, 작업량 '+DW.wl.length+'건)');renderDw()}catch(e){dwNote('파일을 읽지 못했어요.')}};r.readAsText(file)}
+dwSave();dwNote('일일 작업 데이터를 불러왔어요. (지점 '+Object.values(DW.B).reduce((a,b)=>a+b.length,0)+'개, 에러·미해결 '+DW.errs.length+'건, 작업량 '+DW.wl.length+'건)');renderDw();return true}
+function dwImport(file){const r=new FileReader();r.onload=()=>{try{if(!dwApplyBk(JSON.parse(r.result)))dwNote('일일 작업 데이터가 들어 있지 않은 파일이에요.')}catch(e){dwNote('파일을 읽지 못했어요.')}};r.readAsText(file)}
 
 
 

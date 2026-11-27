@@ -1730,5 +1730,18 @@ body.phone-mode #p-stk.ph-av:not(.ms-am)>#ph-am#ph-am{display:none!important}
  addEventListener('scroll',e=>{if(box&&cur&&!box.contains(e.target))show(cur)},true);
 })();
 </script>
+<script>
+/* ---- 스마트폰: 증감 + 주소 등록·변경 대기 건수가 20건에 닿으면 알려주고, 이후 10건 단위(30, 40…)로 계속 알려요 ---- */
+;(function(){const KM='ph-cnt-ms',J=k=>{try{const v=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}};
+ const cnt=()=>{const a=J('ph-inv').filter(x=>x&&x.q!=null&&x.q!==x.s&&!x.d).length,b=J('ph-addr-chg').filter(x=>x&&!x.d).length;return{a,b,t:a+b}};
+ const getM=()=>{try{return Number(localStorage.getItem(KM))||0}catch(e){return 0}},setM=v=>{try{localStorage.setItem(KM,String(v))}catch(e){}};
+ const close=()=>{const o=document.getElementById('ph-cw');if(o)o.remove()};
+ function show(c,m){close();const o=document.createElement('div');o.id='ph-cw';o.setAttribute('role','alert');o.style.cssText='position:fixed;left:10px;right:10px;top:10px;z-index:100001;background:#fff7ed;border:2px solid #fb923c;border-radius:14px;box-shadow:0 10px 28px rgba(15,23,42,.28);padding:12px 14px;font-size:15px;line-height:1.55;color:#7c2d12';
+  o.innerHTML='<b style="font-size:16px">🔔 처리할 기록이 '+m+'건에 도달했어요</b><div style="margin-top:4px">증감 <b>'+c.a+'</b>건 + 주소 등록·변경 <b>'+c.b+'</b>건 = 총 <b>'+c.t+'</b>건이 대기 중이에요.<br>관리 탭에서 확인하고 정리해 주세요.</div><div style="text-align:right;margin-top:8px"><button type="button" style="border:0;border-radius:10px;background:#ea580c;color:#fff;font:inherit;font-weight:800;padding:8px 18px">확인</button></div>';
+  o.querySelector('button').onclick=close;document.body.appendChild(o);try{if(navigator.vibrate)navigator.vibrate([120,80,120])}catch(e){}}
+ function chk(){try{if(!document.body||!document.body.classList.contains('phone-mode'))return;const c=cnt(),m=Math.floor(c.t/10)*10,last=getM();if(m>=20&&m>last){setM(m);show(c,m)}else if(m<last){setM(m<20?0:m)}}catch(e){}}
+ setInterval(()=>{if(!document.hidden)chk()},2500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(chk,300)});setTimeout(chk,3000);window.phCntWarnTest=()=>({cnt:cnt(),last:getM()});
+})();
+</script>
 </body>
 </html>
